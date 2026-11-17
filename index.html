@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>مطبخ 360° — طلب تفصيل 0449</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root { --pill: rgba(28,28,30,.62); --pill-hi: rgba(255,255,255,.92); }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #c9c7c0; font-family: "IBM Plex Sans Arabic", system-ui, sans-serif; -webkit-user-select: none; user-select: none; }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; cursor: grab; outline: none; }
+canvas#c.dragging { cursor: grabbing; }
+.brand { position: fixed; top: 14px; right: 16px; color: #fff; font-weight: 600; font-size: 14px; letter-spacing: .2px; text-shadow: 0 1px 3px rgba(0,0,0,.45); pointer-events: none; }
+.brand small { display: block; font-weight: 400; font-size: 11.5px; opacity: .85; margin-top: 2px; }
+.hint { position: fixed; top: 12px; left: 14px; display: flex; align-items: center; gap: 8px; background: var(--pill); color: #fff; font-size: 12.5px; padding: 6px 6px 6px 12px; border-radius: 999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); transition: opacity .6s; pointer-events: none; direction: rtl; }
+.hint .ic { width: 26px; height: 26px; border-radius: 50%; background: rgba(255,255,255,.18); display: grid; place-items: center; }
+.hint.hide { opacity: 0; }
+.bar { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100vw - 20px); gap: 4px; padding: 4px; background: var(--pill); border-radius: 999px; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 4px 18px rgba(0,0,0,.18); }
+.bar button { border: 0; background: transparent; color: #fff; font: 500 13px/1 "IBM Plex Sans Arabic", system-ui, sans-serif; padding: 9px 14px; border-radius: 999px; cursor: pointer; white-space: nowrap; transition: background .2s, color .2s; }
+.bar button:hover { background: rgba(255,255,255,.14); }
+.bar button.on { background: var(--pill-hi); color: #1c1c1e; }
+.bar .sep { width: 1px; background: rgba(255,255,255,.22); margin: 6px 2px; }
+.corner { position: fixed; bottom: 16px; left: 16px; width: 38px; height: 38px; border-radius: 50%; border: 0; background: var(--pill); color: #fff; cursor: pointer; display: grid; place-items: center; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.corner:hover { background: rgba(28,28,30,.8); }
+#loader { position: fixed; inset: 0; display: grid; place-items: center; background: radial-gradient(circle at 40% 35%, #a9a7a1, #5d5b57); color: #fff; z-index: 10; transition: opacity .7s; }
+#loader.gone { opacity: 0; pointer-events: none; }
+#loader .ring { width: 58px; height: 58px; border-radius: 50%; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; animation: spin 1s linear infinite; margin: 0 auto 12px; }
+#loader p { margin: 0; font-size: 13px; opacity: .9; text-align: center; }
+#err { display: none; position: fixed; inset: 0; place-items: center; background: #3a3936; color: #fff; z-index: 11; padding: 24px; text-align: center; font-size: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (max-width: 560px) {
+.bar { border-radius: 22px; bottom: 10px; }
+.bar .sep { display: none; }
+.bar button { padding: 8px 10px; font-size: 12px; }
+.brand { font-size: 13px; }
+.hint { font-size: 11.5px; }
+.corner { bottom: 104px; }
+}
+</style>
+<script type="importmap">
+{ "imports": {
+"three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+"three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="عرض ثلاثي الأبعاد للمطبخ"></canvas>
+<div class="brand">مطبخ — طلب تفصيل 0449<small>تصميم ثلاثي الأبعاد · عرض 360°</small></div>
+<div class="hint" id="hint">
+<span>اسحب للنظر حولك</span>
+<span class="ic"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 11V6a2 2 0 0 0-4 0v5"/><path d="M14 10V4a2 2 0 0 0-4 0v6"/><path d="M10 10.5V6a2 2 0 0 0-4 0v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/></svg></span>
+</div>
+<div class="bar" role="toolbar">
+<button id="bPano" class="on">360° من الداخل</button>
+<button id="bBack">جدار الغاز</button>
+<button id="bLeft">جدار الثلاجة</button>
+<button id="bOrbit">منظر خارجي</button>
+<span class="sep"></span>
+<button id="bDims">المقاسات</button>
+<button id="bReset" title="إعادة الضبط">↺</button>
+</div>
+<button class="corner" id="bFull" title="ملء الشاشة" aria-label="ملء الشاشة">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>
+</button>
+<div id="loader"><div><div class="ring"></div><p>جارٍ تجهيز المطبخ…</p></div></div>
+<div id="err">تعذّر تشغيل العرض ثلاثي الأبعاد على هذا الجهاز (WebGL غير متاح).</div>
+<script type="module">
+import * as THREE from 'three';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
+const canvas = document.getElementById('c');
+let renderer;
+try {
+renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+document.getElementById('loader').classList.add('gone');
+document.getElementById('err').style.display = 'grid';
+throw e;
+}
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.toneMapping = THREE.NeutralToneMapping;
+renderer.toneMappingExposure = 1.0;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+const maxAniso = renderer.capabilities.getMaxAnisotropy();
+RectAreaLightUniformsLib.init();
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#cfcdc6');
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+scene.environmentIntensity = 0.42;
+const camera = new THREE.PerspectiveCamera(72, 1, 0.03, 60);
+let _seed = 20261117;
+const rnd = () => { _seed = (_seed * 16807) % 2147483647; return (_seed - 1) / 2147483646; };
+const R = (a, b) => a + rnd() * (b - a);
+function mkCanvas(w, h) { const c = document.createElement('canvas'); c.width = w; c.height = h; return [c, c.getContext('2d')]; }
+function toTex(c, { srgb = true, repeat = true } = {}) {
+const t = new THREE.CanvasTexture(c);
+if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+if (repeat) { t.wrapS = t.wrapT = THREE.RepeatWrapping; }
+t.anisotropy = maxAniso;
+return t;
+}
+function drawVeins(ctx, W, H, o) {
+for (let v = 0; v < o.count; v++) {
+let x = R(-0.1, 1.1) * W, y = R(-0.1, 1.1) * H;
+let ang = o.angle + R(-o.spread, o.spread);
+const steps = Math.floor(R(o.len[0], o.len[1]));
+const lw = R(o.width[0], o.width[1]);
+const a = R(o.alpha[0], o.alpha[1]);
+const pts = [[x, y]];
+for (let s = 0; s < steps; s++) { ang += R(-0.32, 0.32); x += Math.cos(ang) * 7; y += Math.sin(ang) * 7; pts.push([x, y]); }
+const stroke = (w, al) => {
+ctx.lineWidth = w; ctx.strokeStyle = `rgba(${o.rgb},${al})`;
+ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+ctx.stroke();
+};
+stroke(lw * 5, a * 0.09); stroke(lw * 2.2, a * 0.22); stroke(lw, a);
+const nb = Math.floor(R(0, 3));
+for (let b = 0; b < nb; b++) {
+const p = pts[Math.floor(R(0, pts.length))];
+let bx = p[0], by = p[1], ba = ang + R(-1.4, 1.4);
+ctx.lineWidth = lw * 0.6; ctx.strokeStyle = `rgba(${o.rgb},${a * 0.7})`;
+ctx.beginPath(); ctx.moveTo(bx, by);
+const bs = Math.floor(R(8, 40));
+for (let s = 0; s < bs; s++) { ba += R(-0.4, 0.4); bx += Math.cos(ba) * 6; by += Math.sin(ba) * 6; ctx.lineTo(bx, by); }
+ctx.stroke();
+}
+}
+}
+function clouds(ctx, W, H, n, rgb, alpha, rmin, rmax) {
+for (let i = 0; i < n; i++) {
+const x = R(0, W), y = R(0, H), r = R(rmin, rmax);
+const g = ctx.createRadialGradient(x, y, 0, x, y, r);
+g.addColorStop(0, `rgba(${rgb},${alpha})`); g.addColorStop(1, `rgba(${rgb},0)`);
+ctx.fillStyle = g; ctx.fillRect(x - r, y - r, r * 2, r * 2);
+}
+}
+function marbleWhite() {
+const W = 2048, H = 512, [c, ctx] = mkCanvas(W, H);
+ctx.fillStyle = '#f3f2ee'; ctx.fillRect(0, 0, W, H);
+clouds(ctx, W, H, 70, '214,214,210', 0.18, 60, 260);
+clouds(ctx, W, H, 40, '255,255,255', 0.35, 60, 220);
+if ('filter' in ctx) ctx.filter = 'blur(0.7px)';
+drawVeins(ctx, W, H, { count: 26, angle: 0.35, spread: 0.6, len: [60, 220], width: [0.8, 2.6], alpha: [0.25, 0.6], rgb: '118,120,126' });
+drawVeins(ctx, W, H, { count: 40, angle: 0.4, spread: 1.2, len: [20, 90], width: [0.4, 1.0], alpha: [0.15, 0.35], rgb: '150,150,156' });
+if ('filter' in ctx) ctx.filter = 'none';
+return toTex(c);
+}
+function marbleGray() {
+const W = 2048, H = 512, [c, ctx] = mkCanvas(W, H);
+ctx.fillStyle = '#c3c3c0'; ctx.fillRect(0, 0, W, H);
+clouds(ctx, W, H, 90, '160,160,158', 0.22, 60, 240);
+clouds(ctx, W, H, 70, '222,222,220', 0.25, 50, 200);
+if ('filter' in ctx) ctx.filter = 'blur(0.8px)';
+drawVeins(ctx, W, H, { count: 22, angle: 0.25, spread: 1.0, len: [50, 200], width: [0.5, 1.5], alpha: [0.18, 0.4], rgb: '240,240,238' });
+drawVeins(ctx, W, H, { count: 30, angle: 0.4, spread: 1.4, len: [15, 70], width: [0.4, 1], alpha: [0.12, 0.3], rgb: '120,120,118' });
+if ('filter' in ctx) ctx.filter = 'none';
+return toTex(c);
+}
+function floorTiles() {
+const T = 640, N = 3, W = T * N, [c, ctx] = mkCanvas(W, W);
+for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) {
+ctx.save(); ctx.beginPath(); ctx.rect(i * T, j * T, T, T); ctx.clip();
+const base = Math.round(R(150, 162));
+ctx.fillStyle = `rgb(${base},${base + 1},${base + 3})`; ctx.fillRect(i * T, j * T, T, T);
+ctx.translate(i * T, j * T);
+clouds(ctx, T, T, 30, '120,121,124', 0.18, 50, 180);
+clouds(ctx, T, T, 22, '196,197,199', 0.18, 50, 160);
+if ('filter' in ctx) ctx.filter = 'blur(0.8px)';
+drawVeins(ctx, T, T, { count: 9, angle: R(0, Math.PI), spread: 0.7, len: [40, 140], width: [0.6, 1.8], alpha: [0.25, 0.6], rgb: '236,236,236' });
+if ('filter' in ctx) ctx.filter = 'none';
+ctx.restore();
+}
+ctx.strokeStyle = 'rgba(70,70,72,0.85)'; ctx.lineWidth = 3;
+for (let i = 0; i <= N; i++) {
+ctx.beginPath(); ctx.moveTo(i * T, 0); ctx.lineTo(i * T, W); ctx.stroke();
+ctx.beginPath(); ctx.moveTo(0, i * T); ctx.lineTo(W, i * T); ctx.stroke();
+}
+return toTex(c);
+}
+function woodGrain() {
+const W = 512, H = 1024, [c, ctx] = mkCanvas(W, H);
+ctx.fillStyle = '#a48a76'; ctx.fillRect(0, 0, W, H);
+let x = 0;
+while (x < W) {
+const bw = R(8, 46), tone = R(-1, 1);
+ctx.fillStyle = tone > 0 ? `rgba(200,176,152,${tone * 0.28})` : `rgba(104,80,62,${-tone * 0.28})`;
+ctx.fillRect(x, 0, bw, H); x += bw;
+}
+for (let i = 0; i < 260; i++) {
+const x0 = R(0, W), amp = R(0.5, 4), k = Math.floor(R(1, 4)), ph = R(0, 6.28);
+const dark = rnd() < 0.62;
+ctx.strokeStyle = dark ? `rgba(84,62,46,${R(0.05, 0.22)})` : `rgba(220,200,178,${R(0.04, 0.16)})`;
+ctx.lineWidth = R(0.5, 2.2);
+for (const off of [-W, 0, W]) {
+ctx.beginPath();
+for (let y = 0; y <= H; y += 8) {
+const xx = x0 + off + Math.sin(y / H * Math.PI * 2 * k + ph) * amp;
+y === 0 ? ctx.moveTo(xx, y) : ctx.lineTo(xx, y);
+}
+ctx.stroke();
+}
+}
+return toTex(c);
+}
+function skyTex() {
+const [c, ctx] = mkCanvas(256, 256);
+const g = ctx.createLinearGradient(0, 0, 0, 256);
+g.addColorStop(0, '#9ccaf2'); g.addColorStop(0.65, '#d9ecfb'); g.addColorStop(1, '#eef4f6');
+ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
+clouds(ctx, 256, 150, 14, '255,255,255', 0.5, 15, 45);
+ctx.fillStyle = 'rgba(190,184,170,.9)';
+ctx.fillRect(0, 200, 90, 56); ctx.fillRect(100, 214, 70, 42); ctx.fillRect(180, 192, 76, 64);
+return toTex(c, { repeat: false });
+}
+const tex = { marble: marbleWhite(), splash: marbleGray(), floor: floorTiles(), wood: woodGrain(), sky: skyTex() };
+const M = {
+cream: new THREE.MeshStandardMaterial({ color: '#e1dfcf', roughness: 0.42, metalness: 0 }),
+creamIn: new THREE.MeshStandardMaterial({ color: '#dddbcb', roughness: 0.55 }),
+wood: new THREE.MeshStandardMaterial({ map: tex.wood, color: '#ece6e2', roughness: 0.55 }),
+doorWood: new THREE.MeshStandardMaterial({ map: tex.wood, color: '#8f7a68', roughness: 0.55 }),
+marble: new THREE.MeshPhysicalMaterial({ map: tex.marble, roughness: 0.16, clearcoat: 0.6, clearcoatRoughness: 0.12 }),
+splash: new THREE.MeshStandardMaterial({ map: tex.splash, roughness: 0.28 }),
+floor: new THREE.MeshStandardMaterial({ map: tex.floor, roughness: 0.3 }),
+wall: new THREE.MeshStandardMaterial({ color: '#efede7', roughness: 0.92, emissive: '#efede7', emissiveIntensity: 0.06 }),
+ceiling: new THREE.MeshStandardMaterial({ color: '#f6f5f2', roughness: 0.95, emissive: '#f4f2ee', emissiveIntensity: 0.38 }),
+black: new THREE.MeshStandardMaterial({ color: '#141414', roughness: 0.45, metalness: 0.35 }),
+plinth: new THREE.MeshStandardMaterial({ color: '#2b2b2b', roughness: 0.7 }),
+steel: new THREE.MeshStandardMaterial({ color: '#cfd1d3', roughness: 0.32, metalness: 1 }),
+fridge: new THREE.MeshStandardMaterial({ color: '#c9cbcd', roughness: 0.38, metalness: 0.9 }),
+chrome: new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.06, metalness: 1 }),
+blackGlass: new THREE.MeshPhysicalMaterial({ color: '#09090a', roughness: 0.06, metalness: 0.1, clearcoat: 1, clearcoatRoughness: 0.03 }),
+castIron: new THREE.MeshStandardMaterial({ color: '#1a1a1a', roughness: 0.8, metalness: 0.4 }),
+brass: new THREE.MeshStandardMaterial({ color: '#2a2a2a', roughness: 0.35, metalness: 0.8 }),
+whiteApp: new THREE.MeshStandardMaterial({ color: '#f1f1ef', roughness: 0.3 }),
+granite: new THREE.MeshStandardMaterial({ color: '#55585b', roughness: 0.62 }),
+drum: new THREE.MeshPhysicalMaterial({ color: '#30363b', roughness: 0.05, metalness: 0.2, clearcoat: 1, transparent: true, opacity: 0.85 }),
+alu: new THREE.MeshStandardMaterial({ color: '#2a2622', roughness: 0.45, metalness: 0.6 }),
+glass: new THREE.MeshStandardMaterial({ color: '#2f78c7', roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.38 }),
+led: new THREE.MeshBasicMaterial({ color: '#fff3dc' }),
+lamp: new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+display: new THREE.MeshBasicMaterial({ color: '#ff8a2a' }),
+screen: new THREE.MeshBasicMaterial({ color: '#8fd8ff' }),
+sky: new THREE.MeshBasicMaterial({ map: tex.sky, toneMapped: false }),
+};
+const cm = v => v / 100;
+function worldUV(g, w, h, d, sx, sy, ox = 0, oy = 0) {
+const uv = g.attributes.uv;
+const dims = [[d, h], [d, h], [w, d], [w, d], [w, h], [w, h]];
+for (let f = 0; f < 6; f++) for (let i = 0; i < 4; i++) {
+const k = f * 4 + i;
+uv.setXY(k, uv.getX(k) * dims[f][0] / sx + ox, uv.getY(k) * dims[f][1] / sy + oy);
+}
+uv.needsUpdate = true;
+}
+function B(x, y, z, w, h, d, mat, o = {}) {
+const W = cm(w), H = cm(h), D = cm(d);
+const g = new THREE.BoxGeometry(W, H, D);
+if (o.uv) worldUV(g, W, H, D, o.uv[0], o.uv[1], o.uv[2] || 0, o.uv[3] || 0);
+const m = new THREE.Mesh(g, mat);
+m.position.set(cm(x) + W / 2, cm(y) + H / 2, cm(z) + D / 2);
+m.castShadow = o.cast !== false; m.receiveShadow = true;
+(o.parent || scene).add(m);
+return m;
+}
+function C(cx, cy, cz, r, len, mat, axis = 'y', o = {}) {
+const g = new THREE.CylinderGeometry(cm(r), cm(o.r2 ?? r), cm(len), o.seg || 32);
+if (axis === 'x') g.rotateZ(Math.PI / 2);
+if (axis === 'z') g.rotateX(Math.PI / 2);
+const m = new THREE.Mesh(g, mat);
+m.position.set(cm(cx), cm(cy), cm(cz));
+m.castShadow = o.cast !== false; m.receiveShadow = true;
+(o.parent || scene).add(m);
+return m;
+}
+function Bw(run, s, y, d, ws, h, wd, mat, o = {}) {
+return run === 'back' ? B(s, y, d, ws, h, wd, mat, o) : B(d, y, s, wd, h, ws, mat, o);
+}
+function CR(run, s, y, d, r, len, mat, axis, o = {}) {
+const wa = axis === 'y' ? 'y' : run === 'back' ? (axis === 'out' ? 'z' : 'x') : (axis === 'out' ? 'x' : 'z');
+return run === 'back' ? C(s, y, d, r, len, mat, wa, o) : C(d, y, s, r, len, mat, wa, o);
+}
+const woodUV = () => [0.62, 1.25, rnd(), rnd()];
+function slab(run, s, y, w, h, dBack, mat, o = {}) {
+return Bw(run, s + 0.15, y + 0.15, dBack, w - 0.3, h - 0.3, 1.8, mat, { uv: mat === M.wood || mat === M.doorWood ? woodUV() : undefined, ...o });
+}
+function bar(run, cs, cy, dFace, len, vertical) {
+if (vertical) {
+Bw(run, cs - 0.6, cy - len / 2, dFace + 2.2, 1.2, len, 1.2, M.black);
+Bw(run, cs - 0.4, cy - len / 2 + 2, dFace, 0.8, 1.2, 2.3, M.black);
+Bw(run, cs - 0.4, cy + len / 2 - 3.2, dFace, 0.8, 1.2, 2.3, M.black);
+} else {
+Bw(run, cs - len / 2, cy - 0.6, dFace + 2.2, len, 1.2, 1.2, M.black);
+Bw(run, cs - len / 2 + 2, cy - 0.4, dFace, 1.2, 0.8, 2.3, M.black);
+Bw(run, cs + len / 2 - 3.2, cy - 0.4, dFace, 1.2, 0.8, 2.3, M.black);
+}
+}
+function steelBar(run, cs, cy, dFace, len, vertical = false) {
+CR(run, cs, cy, dFace + 3.2, 0.9, len, M.steel, vertical ? 'y' : 'along');
+const p = vertical ? [[cs, cy - len / 2 + 3], [cs, cy + len / 2 - 3]] : [[cs - len / 2 + 3, cy], [cs + len / 2 - 3, cy]];
+for (const [ps, py] of p) CR(run, ps, py, dFace + 1.6, 0.6, 3.2, M.steel, 'out');
+}
+function knob(run, s, y, dFace, r = 1.9) {
+CR(run, s, y, dFace + 1.1, r, 2.2, M.steel, 'out', { seg: 28 });
+Bw(run, s - 0.25, y, dFace + 2.2, 0.5, r - 0.3, 0.12, M.black, { cast: false });
+}
+function plane(w, h, mat, x, y, z, rx, ry, o = {}) {
+const m = new THREE.Mesh(new THREE.PlaneGeometry(cm(w), cm(h)), mat);
+m.position.set(cm(x), cm(y), cm(z));
+m.rotation.set(rx, ry, 0, 'YXZ');
+m.receiveShadow = true; m.castShadow = !!o.cast;
+(o.parent || scene).add(m);
+return m;
+}
+const RW = 420, RD = 420, RH = 295;
+tex.floor.repeat.set(RW / 180, RD / 180);
+plane(RW, RD, M.floor, RW / 2, 0, RD / 2, -Math.PI / 2, 0);
+plane(RW, RD, M.ceiling, RW / 2, RH, RD / 2, Math.PI / 2, 0);
+plane(RW, RH, M.wall, RW / 2, RH / 2, 0, 0, 0);
+plane(RD, RH, M.wall, 0, RH / 2, RD / 2, 0, Math.PI / 2);
+const WZ0 = 150, WZ1 = 270, WY0 = 100, WY1 = 215, WT = 18;
+const rw = (z0, z1, y0, y1) => plane(z1 - z0, y1 - y0, M.wall, RW, (y0 + y1) / 2, (z0 + z1) / 2, 0, -Math.PI / 2);
+rw(0, RD, 0, WY0); rw(0, RD, WY1, RH); rw(0, WZ0, WY0, WY1); rw(WZ1, RD, WY0, WY1);
+const windowGroup = new THREE.Group(); scene.add(windowGroup);
+plane(WZ1 - WZ0, WT, M.wall, RW + WT / 2, WY1, (WZ0 + WZ1) / 2, Math.PI / 2, -Math.PI / 2, { parent: windowGroup });
+plane(WT, WY1 - WY0, M.wall, RW + WT / 2, (WY0 + WY1) / 2, WZ0, 0, 0, { parent: windowGroup });
+plane(WT, WY1 - WY0, M.wall, RW + WT / 2, (WY0 + WY1) / 2, WZ1, 0, Math.PI, { parent: windowGroup });
+B(RW - 4, WY0 - 2.5, WZ0 - 3, WT + 4, 2.5, WZ1 - WZ0 + 6, M.marble, { uv: [4.8, 1.2, 0.3, 0.1], parent: windowGroup });
+const fx = RW + 9;
+B(fx, WY0, WZ0, 5, 4.5, WZ1 - WZ0, M.alu, { parent: windowGroup });
+B(fx, WY1 - 4.5, WZ0, 5, 4.5, WZ1 - WZ0, M.alu, { parent: windowGroup });
+B(fx, WY0, WZ0, 5, WY1 - WY0, 4.5, M.alu, { parent: windowGroup });
+B(fx, WY0, WZ1 - 4.5, 5, WY1 - WY0, 4.5, M.alu, { parent: windowGroup });
+B(fx - 1.5, WY0 + 4.5, (WZ0 + WZ1) / 2 - 2.5, 2.5, WY1 - WY0 - 9, 5, M.alu, { parent: windowGroup });
+B(fx + 2, WY0 + 4.5, WZ0 + 4.5, 0.6, WY1 - WY0 - 9, (WZ1 - WZ0) / 2 - 7, M.glass, { cast: false, parent: windowGroup });
+B(fx + 2, WY0 + 4.5, (WZ0 + WZ1) / 2 + 2.5, 0.6, WY1 - WY0 - 9, (WZ1 - WZ0) / 2 - 7, M.glass, { cast: false, parent: windowGroup });
+const sky = plane(420, 300, M.sky, RW + 140, 150, (WZ0 + WZ1) / 2, 0, -Math.PI / 2);
+const DX0 = 250, DX1 = 340, DY1 = 215, DT = 15;
+const fw = (x0, x1, y0, y1) => plane(x1 - x0, y1 - y0, M.wall, (x0 + x1) / 2, (y0 + y1) / 2, RD, 0, Math.PI);
+fw(0, DX0, 0, RH); fw(DX1, RW, 0, RH); fw(DX0, DX1, DY1, RH);
+const doorGroup = new THREE.Group(); scene.add(doorGroup);
+plane(DT, DY1, M.wall, DX0, DY1 / 2, RD + DT / 2, 0, Math.PI / 2, { parent: doorGroup });
+plane(DT, DY1, M.wall, DX1, DY1 / 2, RD + DT / 2, 0, -Math.PI / 2, { parent: doorGroup });
+plane(DX1 - DX0, DT, M.wall, (DX0 + DX1) / 2, DY1, RD + DT / 2, Math.PI / 2, Math.PI, { parent: doorGroup });
+B(DX0 + 1, 0, RD + 4, DX1 - DX0 - 2, DY1 - 1, 4, M.doorWood, { uv: [0.62, 1.25, 0.2, 0], parent: doorGroup });
+B(DX0 - 7, 0, RD - 1.5, 7, DY1 + 7, 1.5, M.cream, { parent: doorGroup });
+B(DX1, 0, RD - 1.5, 7, DY1 + 7, 1.5, M.cream, { parent: doorGroup });
+B(DX0, DY1, RD - 1.5, DX1 - DX0, 7, 1.5, M.cream, { parent: doorGroup });
+C(DX0 + 9, 102, RD + 2.6, 3, 1.4, M.chrome, 'z', { parent: doorGroup });
+B(DX0 + 8.2, 101.1, RD - 1.6, 13, 1.8, 1.4, M.chrome, { parent: doorGroup });
+const BZ = 58;      // base carcass depth (doors to 59.8, worktop 62)
+const TZ = 56.2;    // tall carcass (58 with door)
+const UZ = 33.2;    // brown wall units: 35 deep
+const UZT = 56.2;   // beige top tier: 58 deep
+const DH = 72.8;    // base door height 10 → 82.8
+const CT = 4, CY = 86, SY = 90, UY0 = 155, UT = 235, TOP = 285;  // wall units 155–235 · top tier 235–285
+const XB0 = 60, X34 = 60, X80 = 94, XT = 174, XL = 236, XL1 = 356;
+B(XB0, 10, 0, XT - XB0, 76, BZ, M.creamIn);
+B(0, 0, 0, XT, 10, BZ - 5, M.plinth);
+B(XB0, 82.8, BZ - 3, XT - XB0, 3.2, 3.6, M.black, { cast: false });
+slab('back', X34, 10, 34, DH, BZ, M.cream);                     // 34 door
+{ const g = 3, h = (DH - 2 * g) / 3;                            // 80: three drawers
+for (let i = 0; i < 3; i++) { const y = 10 + i * (h + g); slab('back', X80, y, 80, h, BZ, M.cream);
+if (i < 2) B(X80, y + h, BZ - 3, 80, g, 3.6, M.black, { cast: false }); } }
+B(XT, 10, 0, 62, TOP - 10, TZ, M.creamIn);
+B(XT, 0, 0, 62, 10, TZ - 5, M.plinth);
+slab('back', XT, 10, 62, 37, TZ, M.cream);
+B(XT, 47, TZ - 3, 62, 3, 3.6, M.black, { cast: false });
+slab('back', XT, 50, 62, 36, TZ, M.cream);
+B(XT + 0.4, 86.2, TZ, 61.2, 59.6, 1.4, M.steel);                 // oven 86–146
+B(XT + 2.5, 88, TZ + 1.4, 57, 43, 0.5, M.blackGlass);
+B(XT + 2.5, 133, TZ + 1.4, 57, 11, 0.5, M.blackGlass);
+B(XT + 26.5, 136.5, TZ + 1.9, 9, 3.6, 0.2, M.display, { cast: false });
+knob('back', XT + 10, 138.5, TZ + 1.9, 1.7); knob('back', XT + 52, 138.5, TZ + 1.9, 1.7);
+steelBar('back', XT + 31, 127.5, TZ + 1.9, 48);
+B(XT + 0.4, 146.2, TZ, 61.2, 44.6, 1.4, M.steel);                // microwave 146–191
+B(XT + 2.5, 148.5, TZ + 1.4, 44, 40, 0.5, M.blackGlass);
+B(XT + 47.5, 148.5, TZ + 1.4, 12, 40, 0.5, M.blackGlass);
+B(XT + 49.5, 180, TZ + 1.9, 8, 3, 0.2, M.display, { cast: false });
+for (let i = 0; i < 3; i++) B(XT + 50.5, 158 + i * 6, TZ + 1.9, 6, 3, 0.4, M.steel);
+slab('back', XT, 191, 62, TOP - 191, TZ, M.cream);                   // top door 191–285
+bar('back', XT + 57.5, 210, TZ + 1.8, 30, true);
+{ const d = 33.2, TD = 37;
+B(XL, 10, 0, 20, 76, d, M.creamIn); B(XL1 - 20, 10, 0, 20, 76, d, M.creamIn);
+B(XL + 20, 10, 0, 80, 1.8, d, M.creamIn); B(XL + 20, 84.2, 0, 80, 1.8, d, M.creamIn);
+B(XL + 20, 11.8, 0, 80, 72.4, 1, M.creamIn); B(XL + 20, 47, 1, 80, 1.8, d - 1, M.creamIn);  // open niche + shelf
+B(XL, 0, 0, 120, 10, d - 5, M.plinth);
+slab('back', XL, 10, 20, DH + 3, d, M.cream); slab('back', XL1 - 20, 10, 20, DH + 3, d, M.cream);
+B(XL, CY, 0, XL1 + CT - XL, CT, TD, M.marble, { uv: [4.8, 1.2, 0.6, 0] });
+B(XL1, 0, 0, CT, CY, TD, M.marble, { uv: [4.8, 1.2, 0.8, 0.3] });
+B(XL + 21, 84, 30, 78, 0.4, 1, M.led, { cast: false });
+B(XL + 6, 172, 0, 72, 4, 22, M.doorWood, { uv: [0.62, 1.25, 0.1, 0.3] });
+B(XL + 44, 142, 0, 72, 4, 22, M.doorWood, { uv: [0.62, 1.25, 0.4, 0.6] });
+const sock = (x, n) => { B(x, 106, 0, 8.6 * n, 8.6, 1, M.black, { cast: false });
+for (let i = 0; i < n; i++) { C(x + 4.3 + i * 8.6, 110.3, 1.1, 2.6, 0.4, M.plinth, 'z', { cast: false }); } };
+sock(XL + 8, 1); sock(XL + 22, 2); sock(XL + 72, 1); sock(XL + 86, 2);
+}
+B(62, CY, 0, XT - 62, CT, 62, M.marble, { uv: [4.8, 1.2, 0.1, 0] });
+B(0, SY, 0, XT, UY0 - SY, 1, M.splash, { uv: [4.8, 1.2, 0, 0], cast: false });
+{ const cx = X80 + 40, hw = 76, hz0 = 7, hz1 = 55, hy = SY;
+B(cx - hw / 2, hy, hz0, hw, 0.6, hz1 - hz0, M.blackGlass);
+for (const [dx, z, r] of [[-19, 19, 3.8], [-19, 43, 4.6], [19, 19, 3.8], [19, 43, 5.4]]) {
+C(cx + dx, hy + 1.1, z, r + 2.2, 1, M.steel, 'y', { seg: 40 });
+C(cx + dx, hy + 2.1, z, r, 1.2, M.brass, 'y', { seg: 40 });
+}
+const gy = hy + 3.2, gt = 1.1;
+for (const [a, b] of [[-37, -1], [1, 37]]) {
+const x0 = cx + a, x1 = cx + b;
+B(x0, gy, hz0 + 1, x1 - x0, gt, 1.2, M.castIron); B(x0, gy, hz1 - 2.2, x1 - x0, gt, 1.2, M.castIron);
+B(x0, gy, hz0 + 1, 1.2, gt, hz1 - hz0 - 2, M.castIron); B(x1 - 1.2, gy, hz0 + 1, 1.2, gt, hz1 - hz0 - 2, M.castIron);
+B((x0 + x1) / 2 - 0.6, gy, hz0 + 1, 1.2, gt, hz1 - hz0 - 2, M.castIron); B(x0, gy, 30, x1 - x0, gt, 1.2, M.castIron);
+for (let i = 0; i < 4; i++) B(x0, gy - 2.6, hz0 + 4 + i * 13, 1.2, 2.6, 1.2, M.castIron);
+}
+B(cx - hw / 2, hy, hz1, hw, 0.6, 5, M.blackGlass);
+for (let i = 0; i < 4; i++) { C(cx - 27 + i * 18, hy + 1.7, 57.5, 1.9, 2.2, M.steel, 'y', { seg: 28 }); B(cx - 27 + i * 18 - 0.25, hy + 2.8, 56, 0.5, 0.15, 1.6, M.black, { cast: false }); }
+}
+const XU92 = 0, XH = 92, X19 = 153, XU1 = 172;
+B(0, UY0, 0, XH, 80, UZ, M.wood, { uv: [0.62, 1.25, 0.2, 0] });
+B(X19, UY0, 0, 19, 80, UZ, M.wood, { uv: [0.62, 1.25, 0.5, 0] });
+B(XU1, UY0 - 2, 0, XT - XU1, 82, 35, M.wood, { uv: [0.62, 1.25, 0.7, 0] });
+slab('back', 35, UY0 - 2, XH - 35, 82, UZ, M.wood);
+slab('back', X19, UY0 - 2, 19, 82, UZ, M.wood);
+B(0, UT, 0, XT, TOP - UT, UZT, M.creamIn);
+slab('back', 58, UT, X19 - 58, TOP - UT, UZT, M.cream);
+slab('back', X19, UT, XT - X19, TOP - UT, UZT, M.cream);
+B(XH, UY0, 0, X19 - XH, 80, 1, M.splash, { uv: [4.8, 1.2, 0.37, 0.5], cast: false });
+{ const x0 = XH + 1, w = X19 - XH - 2, d = 50, y0 = UY0 + 6;
+B(x0, y0, 0, w, 4, d, M.steel);
+const s = new THREE.Shape();
+s.moveTo(0, 0); s.lineTo(cm(d), 0);
+s.quadraticCurveTo(cm(d - 2), cm(12), cm(27), cm(17));
+s.lineTo(0, cm(17)); s.lineTo(0, 0);
+const g = new THREE.ExtrudeGeometry(s, { depth: cm(w), bevelEnabled: false, curveSegments: 16 });
+g.rotateY(-Math.PI / 2);
+const canopy = new THREE.Mesh(g, M.steel);
+canopy.position.set(cm(x0 + w), cm(y0 + 4), 0);
+canopy.castShadow = canopy.receiveShadow = true; scene.add(canopy);
+B(XH + (X19 - XH) / 2 - 13, y0 + 21, 0, 26, UT - (y0 + 21), 24, M.steel);
+B(x0 + 10, y0 - 0.3, 18, 8, 0.4, 5, M.lamp, { cast: false });
+B(x0 + w - 18, y0 - 0.3, 18, 8, 0.4, 5, M.lamp, { cast: false });
+B(x0 + w / 2 - 10, y0 + 1, d - 0.3, 20, 2, 0.4, M.blackGlass, { cast: false });
+}
+const Z105 = 0, Z90 = 105, Z65 = 195, ZF = 260, ZF1 = 357;
+const SZ0 = Z90 + 7, SZ1 = Z90 + 83, SD0 = 7, SD1 = 53;            // sink 76 × 46 in the 90 unit
+B(0, 10, 0, BZ, 56, Z65, M.creamIn);
+B(0, 66, 0, BZ, 20, SZ0, M.creamIn); B(0, 66, SZ1, BZ, 20, Z65 - SZ1, M.creamIn);
+B(0, 66, SZ0, SD0, 20, SZ1 - SZ0, M.creamIn); B(SD1, 66, SZ0, BZ - SD1, 20, SZ1 - SZ0, M.creamIn);
+B(0, 0, 0, BZ - 5, 10, Z65, M.plinth);
+B(BZ - 3, 82.8, 60, 3.6, 3.2, Z65 - 60, M.black, { cast: false });
+slab('left', 60, 10, 45, DH, BZ, M.cream);                          // corner unit door (blind into corner)
+slab('left', Z90, 10, 45, DH, BZ, M.cream); slab('left', Z90 + 45, 10, 45, DH, BZ, M.cream);
+B(0, CY, 0, 62, CT, SZ0, M.marble, { uv: [4.8, 1.2, 0.5, 0] });
+B(0, CY, SZ1, 62, CT, ZF - SZ1, M.marble, { uv: [4.8, 1.2, 0.5, 0.4] });
+B(0, CY, SZ0, SD0, CT, SZ1 - SZ0, M.marble, { uv: [4.8, 1.2, 0.5, 0.1] });
+B(SD1, CY, SZ0, 62 - SD1, CT, SZ1 - SZ0, M.marble, { uv: [4.8, 1.2, 0.5, 0.2] });
+B(SD0, SY - 22, SZ0, SD1 - SD0, 1, SZ1 - SZ0, M.granite);
+B(SD0, SY - 22, SZ0, SD1 - SD0, 22, 1, M.granite); B(SD0, SY - 22, SZ1 - 1, SD1 - SD0, 22, 1, M.granite);
+B(SD0, SY - 22, SZ0, 1, 22, SZ1 - SZ0, M.granite); B(SD1 - 1, SY - 22, SZ0, 1, 22, SZ1 - SZ0, M.granite);
+C((SD0 + SD1) / 2, SY - 20.9, (SZ0 + SZ1) / 2 + 20, 4.2, 0.4, M.chrome);
+C((SD0 + SD1) / 2, SY - 20.6, (SZ0 + SZ1) / 2 + 20, 2.6, 0.4, M.granite);
+{ const fz = (SZ0 + SZ1) / 2, fxx = 3.4;
+C(fxx, SY + 1, fz, 2.6, 2, M.chrome);
+const curve = new THREE.CatmullRomCurve3([
+new THREE.Vector3(0, 0, 0), new THREE.Vector3(0, 0.22, 0), new THREE.Vector3(0, 0.36, 0.03),
+new THREE.Vector3(0, 0.38, 0.12), new THREE.Vector3(0, 0.33, 0.21), new THREE.Vector3(0, 0.27, 0.22)]);
+const tube = new THREE.Mesh(new THREE.TubeGeometry(curve, 64, cm(1.25), 20, false), M.chrome);
+tube.rotation.y = Math.PI / 2; tube.position.set(cm(fxx), cm(SY + 1.5), cm(fz)); tube.castShadow = true; scene.add(tube);
+C(fxx + 22, SY + 26.6, fz, 1.5, 3, M.chrome);
+B(fxx - 0.8, SY + 10, fz + 2, 1.6, 1.4, 7, M.chrome);
+}
+B(0, SY, 0, 1, UY0 - SY, ZF, M.splash, { uv: [4.8, 1.2, 0.2, 0], cast: false });
+{ const s0 = Z65 + 2.5, w = 60, front = 59;
+Bw('left', s0, 1, 1, w, 84, front - 1, M.whiteApp);
+Bw('left', s0, 73, front, w, 11, 0.6, M.whiteApp);
+Bw('left', s0 + 3, 75.5, front + 0.6, 22, 5.5, 0.2, M.blackGlass, { cast: false });
+Bw('left', s0 + 7, 77, front + 0.8, 8, 2.4, 0.1, M.screen, { cast: false });
+CR('left', s0 + 46, 78.2, front + 1.2, 3, 1.6, M.steel, 'out');
+const cs = s0 + w / 2, cy = 42;
+const ring = new THREE.Mesh(new THREE.TorusGeometry(cm(16), cm(2.2), 16, 48), M.steel);
+ring.rotation.y = Math.PI / 2; ring.position.set(cm(front + 1), cm(cy), cm(cs)); scene.add(ring);
+CR('left', cs, cy, front + 0.6, 15, 1, M.drum, 'out', { seg: 48 });
+Bw('left', s0 + w - 8, cy - 5, front + 1, 2, 10, 2, M.steel);
+Bw('left', s0, 1, front, w, 3, 0.6, M.plinth);
+}
+B(0, 0, ZF1, 60, TOP, 2, M.cream);
+{ const s0 = ZF + 3, w = ZF1 - ZF - 6, d0 = 2, front = 68, FH = 185;   // side-by-side fridge, 185 high
+Bw('left', s0, 1, d0, w, FH - 1, front - 4 - d0, M.fridge);
+const half = w / 2;
+Bw('left', s0 + 0.2, 1.5, front - 4, half - 0.4, FH - 2, 4, M.fridge);
+Bw('left', s0 + half + 0.2, 1.5, front - 4, half - 0.4, FH - 2, 4, M.fridge);
+steelBar('left', s0 + half - 4, 105, front, 90, true);
+steelBar('left', s0 + half + 4, 105, front, 90, true);
+Bw('left', s0 + half + 10, 102, front + 0.1, 22, 34, 0.3, M.blackGlass, { cast: false });   // water/ice dispenser
+Bw('left', s0 + half + 15, 128, front + 0.45, 12, 2.5, 0.1, M.screen, { cast: false });
+Bw('left', s0 + 1, 1, front, w - 2, 3, 0.4, M.plinth);
+}
+const ZU0 = 35;
+B(0, UY0, ZU0, UZ, 80, 225, M.wood, { uv: [0.62, 1.25, 0.3, 0] });
+for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) slab('left', ZU0 + i * 75 + j * 37.5, UY0 - 2, 37.5, 82, UZ, M.wood);
+B(0, UT, 0, UZT, TOP - UT, ZF, M.creamIn);
+slab('left', 58, UT, 140 - 58, TOP - UT, UZT, M.cream);           // fixed panel (مثبتة)
+slab('left', 140, UT, 60, TOP - UT, UZT, M.cream);
+slab('left', 200, UT, 60, TOP - UT, UZT, M.cream);
+const YF = 185;
+B(0, YF, ZF, UZT, TOP - YF, ZF1 - ZF, M.creamIn);
+slab('left', ZF, YF, 48.5, TOP - YF, UZT, M.cream); slab('left', ZF + 48.5, YF, 48.5, TOP - YF, UZT, M.cream);
+bar('left', ZF + 44, YF + 8, UZT + 1.8, 14, true); bar('left', ZF + 53, YF + 8, UZT + 1.8, 14, true);
+{ const HB = BZ + 1.8, HT = TZ + 1.8, HU = UZ + 1.8, HUT = UZT + 1.8, HL = 33.2 + 1.8;
+bar('back', X34 + 30, 70, HB, 24, true);
+{ const g = 3, h = (DH - 2 * g) / 3; for (let i = 0; i < 3; i++) bar('back', X80 + 40, 10 + i * (h + g) + h / 2, HB, 40, false); }
+bar('back', XT + 31, 28.5, HT, 34, false); bar('back', XT + 31, 68, HT, 34, false);
+bar('back', XL + 16, 70, HL, 24, true); bar('back', XL1 - 16, 70, HL, 24, true);
+bar('back', 88, UY0 + 12, HU, 24, true); bar('back', X19 + 3.5, UY0 + 12, HU, 24, true);
+bar('back', (58 + X19) / 2, UT + 5, HUT, 40, false); bar('back', X19 + 10.5, UT + 5, HUT, 14, false);
+bar('left', 101, 70, HB, 24, true);
+bar('left', Z90 + 42, 70, HB, 24, true); bar('left', Z90 + 48, 70, HB, 24, true);
+for (let i = 0; i < 3; i++) { const m = ZU0 + i * 75 + 37.5; bar('left', m - 3, UY0 + 12, HU, 24, true); bar('left', m + 3, UY0 + 12, HU, 24, true); }
+bar('left', 170, UT + 5, HUT, 34, false); bar('left', 230, UT + 5, HUT, 34, false);
+}
+const ledBack = [[35.5, XH - 0.5], [X19 + 0.5, XU1 - 0.5]];
+for (const [a, b] of ledBack) B(a, UY0 - 0.5, 27, b - a, 0.4, 1.4, M.led, { cast: false });
+B(27, UY0 - 0.5, ZU0 + 1, 1.4, 0.4, 223, M.led, { cast: false });
+scene.add(new THREE.HemisphereLight('#ffffff', '#9a958a', 0.55));
+for (const z of [110, 300]) for (const x of [110, 300]) {
+C(x, RH - 0.2, z, 5.5, 0.4, M.lamp, 'y', { cast: false });
+const sp = new THREE.SpotLight('#fff1dd', 11, 0, Math.PI / 2.6, 0.95, 2);
+sp.position.set(cm(x), cm(RH - 1), cm(z));
+sp.target.position.set(cm(x) - (x < 200 ? 0.25 : 0), 0, cm(z) - (z < 200 ? 0.25 : 0));
+scene.add(sp, sp.target);
+if (x < 200 || z < 200) { sp.castShadow = true; sp.shadow.mapSize.set(1024, 1024); sp.shadow.bias = -0.0004; sp.shadow.normalBias = 0.02; sp.shadow.camera.near = 0.2; sp.shadow.camera.far = 4; }
+}
+for (const [a, b] of ledBack) {
+const rl = new THREE.RectAreaLight('#ffe9c8', 9, cm(b - a), cm(6));
+rl.position.set(cm((a + b) / 2), cm(UY0 - 1), cm(28)); rl.lookAt(cm((a + b) / 2), 0, cm(28)); scene.add(rl);
+}
+{ const rl = new THREE.RectAreaLight('#ffe9c8', 9, cm(6), cm(223));
+rl.position.set(cm(28), cm(UY0 - 1), cm(ZU0 + 112)); rl.lookAt(cm(28), 0, cm(ZU0 + 112)); scene.add(rl); }
+{ const sp = new THREE.SpotLight('#ffe2b8', 2.2, 0, Math.PI / 3, 0.9, 2);
+const cx = cm(XH + (X19 - XH) / 2);
+sp.position.set(cx, cm(155), cm(22)); sp.target.position.set(cx, 0, cm(30)); scene.add(sp, sp.target); }
+{ const rl = new THREE.RectAreaLight('#e3eeff', 5, cm(WZ1 - WZ0), cm(WY1 - WY0));
+rl.position.set(cm(RW - 1), cm((WY0 + WY1) / 2), cm((WZ0 + WZ1) / 2)); rl.lookAt(0, cm((WY0 + WY1) / 2), cm((WZ0 + WZ1) / 2)); scene.add(rl); }
+const dims = new THREE.Group(); dims.visible = false; scene.add(dims);
+function tag(text, x, y, z) {
+const font = '600 50px "IBM Plex Sans Arabic", system-ui, sans-serif';
+const [, mctx] = mkCanvas(8, 8); mctx.font = font;
+const cw = Math.max(256, Math.ceil(mctx.measureText(text).width) + 110);
+const [c, ctx] = mkCanvas(cw, 128);
+ctx.fillStyle = 'rgba(24,24,26,0.84)';
+ctx.beginPath(); ctx.roundRect ? ctx.roundRect(28, 22, cw - 56, 84, 42) : ctx.rect(28, 22, cw - 56, 84); ctx.fill();
+ctx.fillStyle = '#fff'; ctx.font = font; ctx.direction = 'rtl';
+ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(text, cw / 2, 66);
+const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: toTex(c, { repeat: false }), depthTest: false, transparent: true }));
+s.userData.w = cw / 256; s.scale.set(0.2 * s.userData.w, 0.1, 1); s.renderOrder = 20;
+s.position.set(cm(x), cm(y), cm(z)); dims.add(s);
+}
+tag('34', X34 + 17, 58, 64); tag('80', X80 + 40, 58, 64); tag('62', XT + 31, 210, 62);
+tag('20', XL + 10, 50, 40); tag('80', XL + 60, 50, 40); tag('20', XL1 - 10, 50, 40); tag('عمق 35', XL + 60, 74, 40);
+tag('92', 63, 195, 39); tag('61', (XH + X19) / 2, 210, 30); tag('19', X19 + 9.5, 195, 39);
+tag('ارتفاع 80 · عمق 35', 63, 173, 40); tag('ارتفاع 50 · عمق 58', 105, 260, 62);
+tag('105', 64, 58, 82); tag('90 · مغسلة', 64, 58, Z90 + 45); tag('65', 64, 58, Z65 + 32.5); tag('ثلاجة 185', 74, 140, ZF + 48.5);
+for (let i = 0; i < 3; i++) tag('75', 39, 195, ZU0 + 37.5 + i * 75);
+tag('140', 62, 260, 99); tag('60', 62, 260, 170); tag('60', 62, 260, 230); tag('97 · ارتفاع 100', 62, 240, ZF + 48.5);
+const VIEWS = {
+center: { pos: new THREE.Vector3(cm(250), cm(155), cm(275)), yaw: 0.62, pitch: -0.06 },
+back: { pos: new THREE.Vector3(cm(170), cm(150), cm(255)), yaw: 0, pitch: -0.06 },
+left: { pos: new THREE.Vector3(cm(255), cm(150), cm(185)), yaw: Math.PI / 2, pitch: -0.06 },
+};
+let vp = 'center';
+const EYE = VIEWS[vp].pos.clone();
+const view = { yaw: VIEWS[vp].yaw, pitch: -0.06, fov: 78, tYaw: VIEWS[vp].yaw, tPitch: -0.06, tFov: 78 };
+const baseFov = () => (canvas.clientWidth < canvas.clientHeight ? 92 : 78);
+let mode = 'pano';
+const orbit = new OrbitControls(camera, canvas);
+orbit.enabled = false; orbit.enableDamping = true; orbit.dampingFactor = 0.08;
+orbit.minDistance = 2.2; orbit.maxDistance = 13; orbit.maxPolarAngle = Math.PI * 0.49;
+const pointers = new Map();
+let lastPinch = 0, interacted = false;
+const hint = document.getElementById('hint');
+function firstTouch() { if (!interacted) { interacted = true; setTimeout(() => hint.classList.add('hide'), 700); } }
+canvas.addEventListener('pointerdown', e => {
+firstTouch();
+if (mode !== 'pano') return;
+canvas.setPointerCapture(e.pointerId);
+pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+canvas.classList.add('dragging');
+if (pointers.size === 2) { const [a, b] = [...pointers.values()]; lastPinch = Math.hypot(a.x - b.x, a.y - b.y); }
+});
+canvas.addEventListener('pointermove', e => {
+if (mode !== 'pano' || !pointers.has(e.pointerId)) return;
+const p = pointers.get(e.pointerId);
+const dx = e.clientX - p.x, dy = e.clientY - p.y;
+p.x = e.clientX; p.y = e.clientY;
+if (pointers.size === 1) {
+const k = THREE.MathUtils.degToRad(view.fov) / canvas.clientHeight;
+view.tYaw += dx * k; view.tPitch += dy * k;
+view.tPitch = THREE.MathUtils.clamp(view.tPitch, -1.45, 1.45);
+} else if (pointers.size === 2) {
+const [a, b] = [...pointers.values()];
+const d = Math.hypot(a.x - b.x, a.y - b.y);
+if (lastPinch > 0) view.tFov = THREE.MathUtils.clamp(view.tFov * lastPinch / d, 30, 105);
+lastPinch = d;
+}
+});
+const endPtr = e => { pointers.delete(e.pointerId); if (!pointers.size) canvas.classList.remove('dragging'); lastPinch = 0; };
+canvas.addEventListener('pointerup', endPtr);
+canvas.addEventListener('pointercancel', endPtr);
+canvas.addEventListener('wheel', e => {
+firstTouch();
+if (mode !== 'pano') return;
+e.preventDefault();
+view.tFov = THREE.MathUtils.clamp(view.tFov * (1 + e.deltaY * 0.001), 30, 105);
+}, { passive: false });
+canvas.addEventListener('keydown', e => {
+if (mode !== 'pano') return;
+const s = 0.08;
+if (e.key === 'ArrowLeft') view.tYaw += s;
+if (e.key === 'ArrowRight') view.tYaw -= s;
+if (e.key === 'ArrowUp') view.tPitch = Math.min(1.45, view.tPitch + s);
+if (e.key === 'ArrowDown') view.tPitch = Math.max(-1.45, view.tPitch - s);
+});
+const btn = id => document.getElementById(id);
+function setMode(m) {
+mode = m;
+btn('bPano').classList.toggle('on', m === 'pano' && vp === 'center');
+btn('bBack').classList.toggle('on', m === 'pano' && vp === 'back');
+btn('bLeft').classList.toggle('on', m === 'pano' && vp === 'left');
+btn('bOrbit').classList.toggle('on', m === 'orbit');
+orbit.enabled = m === 'orbit';
+sky.visible = m === 'pano';
+const k = m === 'pano' ? 1 : 2.4;
+dims.children.forEach(t => t.scale.set(0.2 * k * t.userData.w, 0.1 * k, 1));
+scene.background.set(m === 'pano' ? '#cfcdc6' : '#dedcd6');
+if (m === 'orbit') {
+camera.fov = canvas.clientWidth < canvas.clientHeight ? 62 : 45;
+camera.position.set(cm(720), cm(470), cm(820));
+orbit.target.set(cm(150), cm(110), cm(150));
+camera.updateProjectionMatrix(); orbit.update();
+} else {
+doorGroup.visible = windowGroup.visible = true;
+}
+}
+function goView(name) {
+vp = name;
+const v = VIEWS[name];
+view.tYaw = v.yaw + Math.round((view.yaw - v.yaw) / (Math.PI * 2)) * Math.PI * 2;
+view.tPitch = v.pitch; view.tFov = baseFov();
+setMode('pano');
+}
+function resetView() { if (mode === 'orbit') setMode('orbit'); else goView(vp); }
+btn('bPano').onclick = () => { firstTouch(); goView('center'); };
+btn('bBack').onclick = () => { firstTouch(); goView('back'); };
+btn('bLeft').onclick = () => { firstTouch(); goView('left'); };
+btn('bOrbit').onclick = () => { firstTouch(); setMode('orbit'); };
+btn('bDims').onclick = () => { dims.visible = !dims.visible; btn('bDims').classList.toggle('on', dims.visible); };
+btn('bReset').onclick = resetView;
+btn('bFull').onclick = async () => {
+try {
+if (document.fullscreenElement) await document.exitFullscreen();
+else await document.documentElement.requestFullscreen();
+} catch (e) {  }
+};
+function resize() {
+const w = canvas.clientWidth, h = canvas.clientHeight;
+renderer.setSize(w, h, false);
+camera.aspect = w / h;
+if (mode === 'pano' && !interacted) { view.fov = view.tFov = baseFov(); }
+camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+const dir = new THREE.Vector3();
+function frame() {
+if (mode === 'pano') {
+view.yaw += (view.tYaw - view.yaw) * 0.16;
+view.pitch += (view.tPitch - view.pitch) * 0.16;
+view.fov += (view.tFov - view.fov) * 0.16;
+EYE.lerp(VIEWS[vp].pos, 0.07);
+camera.position.copy(EYE);
+dir.set(-Math.sin(view.yaw) * Math.cos(view.pitch), Math.sin(view.pitch), -Math.cos(view.yaw) * Math.cos(view.pitch));
+camera.lookAt(EYE.x + dir.x, EYE.y + dir.y, EYE.z + dir.z);
+if (Math.abs(camera.fov - view.fov) > 0.01) { camera.fov = view.fov; camera.updateProjectionMatrix(); }
+} else {
+orbit.update();
+doorGroup.visible = camera.position.z < cm(RD);
+windowGroup.visible = camera.position.x < cm(RW);
+}
+renderer.render(scene, camera);
+}
+setMode('pano');
+renderer.setAnimationLoop(frame);
+requestAnimationFrame(() => requestAnimationFrame(() => {
+document.getElementById('loader').classList.add('gone');
+setTimeout(() => { if (!interacted) hint.classList.add('hide'); }, 12000);
+}));
+</script>
+</body>
+</html>
